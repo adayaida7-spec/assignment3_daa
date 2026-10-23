@@ -6,8 +6,8 @@
 | --- | --- | --- | --- | --- |
 | Kruskal | sparse | comparisons / (m log2 m) | 0.7447 | 0.9069 |
 | Kruskal | dense | comparisons / (m log2 m) | 0.6662 | 0.9027 |
-| Prim | sparse | edge_scans / (n + m) | 1.6000 | 1.6000 |
-| Prim | dense | edge_scans / (n + m) | 1.9048 | 1.9048 |
+| Prim | sparse | comparisons / (m log2 m) | 1.8291 | 1.9344 |
+| Prim | dense | comparisons / (m log2 m) | 1.8248 | 1.8896 |
 | Kosaraju | sparse | edge_scans / (n + m) | 1.6000 | 1.6000 |
 | Kosaraju | dense | edge_scans / (n + m) | 1.9048 | 1.9048 |
 | Kahn | sparse | edge_scans / (n + m) | 0.8000 | 0.8000 |
@@ -15,7 +15,9 @@
 | DagShortestPath | sparse | edge_scans / (n + m) | 0.8000 | 0.8000 |
 | DagShortestPath | dense | edge_scans / (n + m) | 0.9524 | 0.9524 |
 
-## Kruskal DSU calls per edge
+Prim comparisons include heap work. Its scan ratios alone describe only the linear adjacency traversal.
+
+## Kruskal DSU calls per input edge
 
 | Density | Minimum dsu_ops / m | Maximum dsu_ops / m |
 | --- | --- | --- |
@@ -39,6 +41,10 @@
 
 Combined operations = dsu_ops + edge_scans + comparisons.
 
-Kruskal sorts every edge even when its scan stops early. Its sorting factor belongs to comparisons, not to the edge scan counter.
+Prim and Kosaraju scan 2m adjacency entries. Kahn and DAG relaxation scan m edges each.
 
-DSU call counts measure invocation frequency; they do not measure parent-pointer traversals.
+Kruskal sorts every edge even when its scan stops early. The sorting logarithm belongs to comparisons, not edge_scans. Its edge scan slope can differ from 1 because the examined fraction changes with graph size.
+
+DSU counters measure find calls and successful unions, not parent-pointer traversals. They do not independently verify the inverse-Ackermann bound.
+
+These finite measurements support the theoretical analysis; they do not prove asymptotic complexity.
