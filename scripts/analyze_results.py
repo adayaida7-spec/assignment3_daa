@@ -1,64 +1,15 @@
-import csv
 import math
-from pathlib import Path
+
+from plot_results import (
+    ROOT,
+    ALGORITHMS,
+    read_results,
+    select_rows,
+    operations,
+)
 
 
-ROOT = Path(__file__).resolve().parents[1]
-CSV_FILE = ROOT / "results" / "results.csv"
 OUTPUT_FILE = ROOT / "results" / "analysis.md"
-
-ALGORITHMS = [
-    "Kruskal",
-    "Prim",
-    "Kosaraju",
-    "Kahn",
-    "DagShortestPath",
-]
-
-def read_results():
-    with CSV_FILE.open(encoding="utf-8", newline="") as file:
-        rows = list(csv.DictReader(file))
-
-    if len(rows) != 50:
-        raise ValueError("Expected 50 data rows")
-
-    for row in rows:
-        for column in (
-            "n",
-            "m",
-            "dsu_ops",
-            "edge_scans",
-            "comparisons",
-        ):
-            row[column] = int(row[column])
-
-    return rows
-
-
-def select_rows(rows, algorithm, density):
-    selected = [
-        row
-        for row in rows
-        if row["algorithm"] == algorithm
-        and row["graph"].endswith("_" + density)
-    ]
-
-    selected.sort(key=lambda row: row["n"])
-
-    if len(selected) != 5:
-        raise ValueError(
-            f"Expected five sizes: {algorithm}, {density}"
-        )
-
-    return selected
-
-
-def operations(row):
-    return (
-        row["dsu_ops"]
-        + row["edge_scans"]
-        + row["comparisons"]
-    )
 
 
 def fitted_slope(rows, counter):
@@ -95,11 +46,9 @@ def main():
 
     for algorithm in ALGORITHMS:
         for density in ("sparse", "dense"):
-            selected = select_rows(
-                rows, algorithm, density
-            )
+            selected = select_rows(rows, algorithm, density)
 
-            if algorithm == "Kruskal":
+            if algorithm in ("Kruskal", "Prim"):
                 formula = "comparisons / (m log2 m)"
 
                 values = [
@@ -111,8 +60,7 @@ def main():
                 formula = "edge_scans / (n + m)"
 
                 values = [
-                    row["edge_scans"]
-                    / (row["n"] + row["m"])
+                    row["edge_scans"] / (row["n"] + row["m"])
                     for row in selected
                 ]
 
@@ -123,7 +71,10 @@ def main():
 
     lines.extend([
         "",
-        "## Kruskal DSU calls per edge",
+        "Prim comparisons include heap work. Its scan ratios alone "
+        "describe only the linear adjacency traversal.",
+        "",
+        "## Kruskal DSU calls per input edge",
         "",
         "| Density | Minimum dsu_ops / m | Maximum dsu_ops / m |",
         "| --- | --- | --- |",
@@ -138,8 +89,8 @@ def main():
         ]
 
         lines.append(
-            f"| {density} | {min(values):.4f} "
-            f"| {max(values):.4f} |"
+            f"| {density} "
+            f"| {min(values):.4f} | {max(values):.4f} |"
         )
 
     lines.extend([
@@ -153,9 +104,7 @@ def main():
 
     for algorithm in ALGORITHMS:
         for density in ("sparse", "dense"):
-            selected = select_rows(
-                rows, algorithm, density
-            )
+            selected = select_rows(rows, algorithm, density)
 
             scan_slope = fitted_slope(
                 selected,
@@ -177,12 +126,20 @@ def main():
         "",
         "Combined operations = dsu_ops + edge_scans + comparisons.",
         "",
-        "Kruskal sorts every edge even when its scan stops early. "
-        "Its sorting factor belongs to comparisons, "
-        "not to the edge scan counter.",
+        "Prim and Kosaraju scan 2m adjacency entries. "
+        "Kahn and DAG relaxation scan m edges each.",
         "",
-        "DSU call counts measure invocation frequency; "
-        "they do not measure parent-pointer traversals.",
+        "Kruskal sorts every edge even when its scan stops early. "
+        "The sorting logarithm belongs to comparisons, not edge_scans. "
+        "Its edge scan slope can differ from 1 because the examined "
+        "fraction changes with graph size.",
+        "",
+        "DSU counters measure find calls and successful unions, "
+        "not parent-pointer traversals. They do not independently "
+        "verify the inverse-Ackermann bound.",
+        "",
+        "These finite measurements support the theoretical analysis; "
+        "they do not prove asymptotic complexity.",
         "",
     ])
 
